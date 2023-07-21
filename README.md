@@ -10,7 +10,7 @@ Nostr: [npub15fy9pt2tuh5nt3u2a9euhftx29x46vzma8pknx5ecj8r6eu8j6hsaakfqk](nostr:/
 
 Twitter: [@saltedlolly](https://twitter.com/saltedlolly)
 
-GitHub: [@saltedlolly](https://github.com/saltedlolly))
+GitHub: [@saltedlolly](https://github.com/saltedlolly)
 
 # Other Projects
 
