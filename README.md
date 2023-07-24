@@ -2,8 +2,6 @@
 
 ## Contact Info
 
-Find me on...
-
 Bluesky: [@olly.st](https://bsky.app/profile/olly.st)
 
 Nostr: [npub15fy9pt2tuh5nt3u2a9euhftx29x46vzma8pknx5ecj8r6eu8j6hsaakfqk](nostr://npub15fy9pt2tuh5nt3u2a9euhftx29x46vzma8pknx5ecj8r6eu8j6hsaakfqk)
