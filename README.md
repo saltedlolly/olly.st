@@ -10,7 +10,7 @@ GitHub: [@saltedlolly](https://github.com/saltedlolly)
 
 # Other Projects
 
-[DigiNode Tools](https://github.com/saltedlolly/diginode-tools) - Suite of linux bash scripts that make it easy to setup, monitor and manage a DigiByte full node and DigiAsset Node on a Raspberry Pi 4, and other Ubuntu or Debian systems.
+[DigiNode Tools](https://diginode.tools) - Suite of bash scripts that make it easy to setup, monitor and manage a DigiByte full node and DigiAsset Node on a Raspberry Pi and other Ubuntu/Debian systems.
 
 [DigiByte.Social](https://digibyte.social) - Claim a YourName.DigiByte.Social handle for use on Bluesky.
 
