@@ -1,0 +1,403 @@
+/* olly.st: one page, Neon Midnight colours from saltedlolly.com.
+   Dark by default; light when the visitor's system is set to light. */
+
+:root {
+  color-scheme: dark;
+  --bg: #050816;
+  --text: #f7f3ec;
+  --muted: #a9b2c8;
+  --faint: #8590ad;
+  --panel: rgba(12, 18, 40, 0.72);
+  --panel-hover: rgba(18, 26, 54, 0.86);
+  --border: rgba(160, 175, 220, 0.16);
+  --border-hover: rgba(255, 137, 186, 0.5);
+  --accent: #ff89ba;
+  --accent-2: #8cc9ff;
+  --focus: #8cc9ff;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --gradient: linear-gradient(115deg, #ff7b73, #ff5f9b 40%, #b35cff 72%, #4fa9ff);
+  --fallback-bg:
+    radial-gradient(60% 50% at 15% 10%, rgba(255, 95, 155, 0.16), transparent 70%),
+    radial-gradient(55% 45% at 85% 30%, rgba(79, 169, 255, 0.16), transparent 70%),
+    radial-gradient(50% 40% at 50% 100%, rgba(179, 92, 255, 0.14), transparent 70%);
+
+  /* Read by site.js for the background animation: "r, g, b" triplets. */
+  --mesh-node: 247, 243, 236;
+  --mesh-link: 160, 175, 220;
+  --mesh-aurora: 255, 95, 155 | 179, 92, 255 | 79, 169, 255 | 255, 123, 115;
+  --mesh-aurora-alpha: 0.2;
+  --mesh-link-alpha: 0.22;
+  --mesh-blend: lighter;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #e9edf5;
+    --text: #141a30;
+    --muted: #424b6a;
+    --faint: #555e7c;
+    --panel: rgba(255, 255, 255, 0.74);
+    --panel-hover: rgba(255, 255, 255, 0.92);
+    --border: rgba(30, 40, 80, 0.12);
+    --border-hover: rgba(176, 40, 95, 0.45);
+    --accent: #b0285f;
+    --accent-2: #1a5fb8;
+    --focus: #1a5fb8;
+    --shadow: 0 16px 40px rgba(20, 28, 60, 0.1);
+    /* Deepened so the wordmark keeps its contrast on a pale page. */
+    --gradient: linear-gradient(115deg, #c8413a, #b0285f 40%, #7b3fd6 72%, #1a5fb8);
+    --fallback-bg:
+      radial-gradient(60% 50% at 15% 10%, rgba(255, 95, 155, 0.14), transparent 70%),
+      radial-gradient(55% 45% at 85% 30%, rgba(79, 169, 255, 0.16), transparent 70%),
+      radial-gradient(50% 40% at 50% 100%, rgba(179, 92, 255, 0.12), transparent 70%);
+
+    --mesh-node: 40, 50, 95;
+    --mesh-link: 50, 62, 110;
+    --mesh-aurora: 255, 120, 170 | 180, 130, 255 | 110, 180, 255 | 255, 160, 140;
+    --mesh-aurora-alpha: 0.28;
+    --mesh-link-alpha: 0.2;
+    --mesh-blend: source-over;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--fallback-bg), var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Once the animation is running it paints the glow itself. */
+.has-mesh body {
+  background: var(--bg);
+}
+
+.mesh {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  width: min(960px, 100% - 32px);
+  margin-inline: auto;
+  padding-block: clamp(48px, 10vh, 112px) 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+main {
+  display: grid;
+  gap: 40px;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Hero */
+
+.hero {
+  margin-bottom: 48px;
+}
+
+.wordmark {
+  margin: 0;
+  font-size: clamp(3.5rem, 15vw, 7.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.wordmark a {
+  display: inline-block;
+  padding-bottom: 0.08em;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.name {
+  margin: 16px 0 0;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  margin: 6px 0 0;
+  max-width: 34em;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.6vw, 1.125rem);
+}
+
+/* Shared */
+
+.eyebrow {
+  display: block;
+  margin: 0 0 12px;
+  color: var(--faint);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+  background: var(--panel-hover);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The blog: the main link, so it's the biggest card. */
+
+.blog {
+  position: relative;
+  padding: 28px 30px;
+  overflow: hidden;
+}
+
+.blog::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--gradient);
+}
+
+.blog .eyebrow {
+  color: var(--accent);
+}
+
+.blog__title {
+  font-size: clamp(1.75rem, 6vw, 2.5rem);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.blog__text {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 1.0625rem;
+  max-width: 36em;
+}
+
+.blog__go {
+  margin-top: 18px;
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.blog:hover .blog__go {
+  color: var(--accent-2);
+}
+
+/* Projects */
+
+.projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.project__name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.project__text {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  flex-grow: 1;
+}
+
+.project__host {
+  margin-top: 14px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.project:hover .project__host {
+  color: var(--accent-2);
+}
+
+/* Elsewhere */
+
+.elsewhere {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pill,
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.pill:hover,
+.copy:hover {
+  border-color: var(--border-hover);
+  background: var(--panel-hover);
+}
+
+.pill svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  color: var(--accent-2);
+}
+
+.pill svg.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  color: var(--accent);
+}
+
+.nostr {
+  display: flex;
+  gap: 6px;
+}
+
+.npub {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.copy {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.copy[hidden] {
+  display: none;
+}
+
+/* Footer */
+
+.footer {
+  margin-top: auto;
+  padding-top: 56px;
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.footer p {
+  margin: 0;
+}
+
+.footer strong {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .hero {
+    margin-bottom: 36px;
+  }
+
+  main {
+    gap: 32px;
+  }
+
+  .blog {
+    padding: 24px 22px;
+  }
+
+  .card {
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .pill,
+  .copy {
+    transition: none;
+  }
+}

@@ -1,1 +1,5 @@
+# GitHub Pages builds this site with Jekyll. index.html and assets/ are copied
+# as they are; .well-known must be listed because Jekyll skips dot folders
+# (it holds nostr.json, the Nostr address _@olly.st).
 include: [".well-known"]
+exclude: ["README.md", "CLAUDE.md"]

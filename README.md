@@ -1,17 +1,11 @@
 # olly.st
 
-## Contact Info
+Olly Stedall's identity page at [olly.st](https://olly.st): the domain behind the Bluesky handle [@olly.st](https://bsky.app/profile/olly.st) and the Nostr address `_@olly.st`. My blog is [saltedlolly.com](https://saltedlolly.com).
 
-Bluesky: [@olly.st](https://bsky.app/profile/olly.st)
+A single static page served by GitHub Pages:
 
-Nostr: [npub15fy9pt2tuh5nt3u2a9euhftx29x46vzma8pknx5ecj8r6eu8j6hsaakfqk](nostr://npub15fy9pt2tuh5nt3u2a9euhftx29x46vzma8pknx5ecj8r6eu8j6hsaakfqk)
+- `index.html`, `assets/site.css`, `assets/site.js`: the page, its styles, and the background animation (respects reduced motion) plus the Nostr key's Copy button.
+- `.well-known/nostr.json`: Nostr (NIP-05) verification. `_config.yml` tells Jekyll to publish it.
+- The Bluesky handle is verified by a DNS TXT record (`_atproto.olly.st`), not by this site.
 
-GitHub: [@saltedlolly](https://github.com/saltedlolly)
-
-# Other Projects
-
-[DigiNode Tools](https://diginode.tools) - Suite of bash scripts that make it easy to setup, monitor and manage a DigiByte full node and DigiAsset Node on a Raspberry Pi and other Ubuntu/Debian systems.
-
-[DigiByte.Social](https://digibyte.social) - Claim a YourName.DigiByte.Social handle for use on Bluesky.
-
-[saltedlolly.com](https://saltedlolly.com) - My very old personal blog. Very rarely updated.
+Preview locally with `python3 -m http.server` and open http://localhost:8000.
