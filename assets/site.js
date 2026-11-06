@@ -1,78 +1,188 @@
-// olly.st's only script: the Nostr key's Copy button, and the background
-// animation (a slow aurora glow behind a sparse mesh of drifting nodes, with
-// the odd pulse travelling along a link). The page works fully without it.
+// olly.st's only script: the Nostr key's Copy button, the blog panel's latest
+// posts, and the background animation (areas of colour that slowly morph, drift
+// between hues and pulse). The page works without it: the blog panel still links
+// to the blog, and site.css has a static gradient as the background's fallback.
 //
-// Kept light on purpose: one canvas, the aurora drawn at 1/8 size and scaled
-// up (it's blurry anyway), node count based on screen area, 30fps on small
-// screens, paused while the tab is hidden, and a single still frame when the
-// visitor prefers reduced motion or has Data Saver on.
+// Kept light on purpose: one small WebGL shader with no libraries, drawn at half
+// size or less and scaled up (it's all soft edges anyway), 30fps, paused while
+// the tab is hidden, and a single still frame when the visitor prefers reduced
+// motion or has Data Saver on. Slow devices without a real GPU get the fallback.
 
 (() => {
   setUpCopyButton();
+  setUpPosts();
 
-  const canvas = document.querySelector(".mesh");
-  const ctx = canvas && canvas.getContext("2d");
-  if (!ctx) return;
+  const canvas = document.querySelector(".field");
+  const gl =
+    canvas &&
+    canvas.getContext("webgl", {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      powerPreference: "low-power",
+      failIfMajorPerformanceCaveat: true,
+    });
+  if (!gl) return;
 
-  const aurora = document.createElement("canvas");
-  const actx = aurora.getContext("2d");
-  const AURORA_SCALE = 1 / 8;
+  const VERTEX_SHADER = `
+    attribute vec2 a_position;
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
 
+  // Each sine below folds the page's coordinates through the one before it,
+  // which is what turns plain waves into shapes that swell and melt into each
+  // other. The speeds don't share a common period, so it never visibly repeats.
+  //
+  // The final colour is always a blend of the palette in site.css, so that
+  // palette alone decides the worst-case contrast of the text on top.
+  const FRAGMENT_SHADER = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform vec3 u_base;
+    uniform vec3 u_hues[4];
+
+    float wave(float value) {
+      return 0.5 + 0.5 * sin(value);
+    }
+
+    void main() {
+      float t = u_time;
+      vec2 p = gl_FragCoord.xy / min(u_resolution.x, u_resolution.y) * 1.5;
+
+      p += 0.60 * vec2(sin(p.y * 1.3 + t * 0.17), cos(p.x * 1.1 - t * 0.14 + 1.7));
+      p += 0.45 * vec2(sin(p.y * 2.1 - t * 0.21 + 4.1), cos(p.x * 1.9 + t * 0.16 + 2.3));
+      p += 0.30 * vec2(sin(p.y * 3.1 + t * 0.12 + 0.6), cos(p.x * 2.7 - t * 0.19 + 5.2));
+
+      // Which hue each area of the page is showing.
+      float across = smoothstep(0.15, 0.85, wave(p.x * 1.4 + p.y * 0.4 + t * 0.09));
+      float down = smoothstep(0.15, 0.85, wave(p.y * 1.2 - p.x * 0.5 - t * 0.07 + 2.0));
+      vec3 hue = mix(mix(u_hues[0], u_hues[1], across), mix(u_hues[2], u_hues[3], across), down);
+
+      // How strongly it shows: pools of colour, a wave of light rolling through
+      // them about every 10 seconds, and a slower breath across the whole page.
+      float pools = smoothstep(0.1, 0.9, wave(p.x * 1.1 + p.y * 1.3 + t * 0.11));
+      float pulse = wave(p.x * 0.9 - p.y * 0.7 + t * 0.63);
+      float breath = wave(t * 0.29);
+      float strength = pools * (0.5 + 0.35 * pulse + 0.15 * breath);
+
+      // A fraction of a shade of noise, to stop dark gradients showing bands.
+      float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      gl_FragColor = vec4(mix(u_base, hue, strength) + (noise - 0.5) / 255.0, 1.0);
+    }
+  `;
+
+  const MAX_LONG_SIDE = 1024;
+  const RESOLUTION = 0.5; // Drawn pixels per CSS pixel.
+  const FRAME_INTERVAL = 1000 / 30;
+  const STILL_TIME = 40; // A well-spread moment, for the single still frame.
+
+  const root = document.documentElement;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const darkScheme = matchMedia("(prefers-color-scheme: dark)");
   const saveData = Boolean(navigator.connection && navigator.connection.saveData);
 
-  // Four glows. Positions and sizes are fractions of the screen; each drifts
-  // round its home on its own slow loop.
-  const blobs = [
-    { x: 0.18, y: 0.12, r: 0.55, sx: 0.00007, sy: 0.00005, phase: 0 },
-    { x: 0.82, y: 0.3, r: 0.5, sx: 0.00005, sy: 0.00008, phase: 2.1 },
-    { x: 0.45, y: 0.95, r: 0.6, sx: 0.00006, sy: 0.00004, phase: 4.2 },
-    { x: 0.95, y: 0.85, r: 0.35, sx: 0.00009, sy: 0.00006, phase: 1.3 },
-  ];
-
-  let width = 0;
-  let height = 0;
-  let linkDistance = 140;
-  let frameInterval = 1000 / 60;
-  let colours;
-  let nodes = [];
-  let pulses = [];
-  let nextPulseAt = 0;
-  let pointer = null;
+  let uniforms = null;
   let frame = 0;
-  let lastTime = 0;
   let lastDrawn = 0;
   let resizeTimer = 0;
+  // Starting somewhere different makes each visit its own.
+  let elapsed = Math.random() * 1000;
 
-  document.documentElement.classList.add("has-mesh");
-  readColours();
-  resize();
-  start();
+  if (setUp()) {
+    start();
+  }
 
   addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+      if (!uniforms) return;
       resize();
-      if (!animating()) drawStill();
+      draw();
     }, 150);
   });
 
-  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
+  document.addEventListener("visibilitychange", start);
   reducedMotion.addEventListener("change", start);
   darkScheme.addEventListener("change", () => {
+    if (!uniforms) return;
     readColours();
-    if (!animating()) drawStill();
+    draw();
   });
 
-  addEventListener(
-    "pointermove",
-    (event) => {
-      if (event.pointerType === "mouse") pointer = { x: event.clientX, y: event.clientY };
-    },
-    { passive: true },
-  );
-  document.addEventListener("pointerleave", () => (pointer = null));
+  // Browsers can reclaim the GPU at any time. Fall back to the CSS gradient
+  // until they hand it back.
+  canvas.addEventListener("webglcontextlost", (event) => {
+    event.preventDefault();
+    stop();
+    uniforms = null;
+    root.classList.remove("has-field");
+  });
+  canvas.addEventListener("webglcontextrestored", () => {
+    if (setUp()) start();
+  });
+
+  function setUp() {
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return false;
+    gl.useProgram(program);
+
+    // One triangle big enough to cover the whole screen.
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    uniforms = {
+      resolution: gl.getUniformLocation(program, "u_resolution"),
+      time: gl.getUniformLocation(program, "u_time"),
+      base: gl.getUniformLocation(program, "u_base"),
+      hues: gl.getUniformLocation(program, "u_hues"),
+    };
+
+    root.classList.add("has-field");
+    readColours();
+    resize();
+    return true;
+  }
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    return shader;
+  }
+
+  // Colours come from CSS custom properties, so the light and dark palettes
+  // live in site.css alongside the rest of the theme.
+  function readColours() {
+    const style = getComputedStyle(root);
+    const parse = (rgb) => rgb.split(",").map((part) => parseFloat(part) / 255);
+    gl.uniform3fv(uniforms.base, parse(style.getPropertyValue("--field-base")));
+    gl.uniform3fv(uniforms.hues, style.getPropertyValue("--field-hues").split("|").flatMap(parse));
+  }
+
+  function resize() {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const scale = Math.min(RESOLUTION, MAX_LONG_SIDE / Math.max(width, height, 1));
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+  }
 
   function animating() {
     return !reducedMotion.matches && !saveData;
@@ -80,235 +190,181 @@
 
   function start() {
     stop();
-    if (!animating()) {
-      pointer = null;
-      drawStill();
-      return;
+    if (!uniforms || document.hidden) return;
+    if (animating()) {
+      frame = requestAnimationFrame(tick);
+    } else {
+      draw();
     }
-    lastTime = 0;
-    frame = requestAnimationFrame(tick);
   }
 
   function stop() {
     cancelAnimationFrame(frame);
     frame = 0;
-  }
-
-  // Colours come from CSS custom properties, so the light and dark themes
-  // live in site.css alongside the rest of the palette.
-  function readColours() {
-    const style = getComputedStyle(document.documentElement);
-    const value = (name) => style.getPropertyValue(name).trim();
-    colours = {
-      node: value("--mesh-node"),
-      link: value("--mesh-link"),
-      aurora: value("--mesh-aurora").split("|").map((rgb) => rgb.trim()),
-      auroraAlpha: parseFloat(value("--mesh-aurora-alpha")) || 0.2,
-      linkAlpha: parseFloat(value("--mesh-link-alpha")) || 0.2,
-      blend: value("--mesh-blend") || "source-over",
-    };
-  }
-
-  function resize() {
-    width = innerWidth;
-    height = innerHeight;
-    const small = width < 700;
-    const dpr = Math.min(devicePixelRatio || 1, small ? 1.5 : 2);
-
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    aurora.width = Math.max(1, Math.round(width * AURORA_SCALE));
-    aurora.height = Math.max(1, Math.round(height * AURORA_SCALE));
-
-    frameInterval = 1000 / (small ? 30 : 60);
-    linkDistance = clamp(Math.min(width, height) * 0.2, 90, 160);
-
-    const wanted = Math.round(clamp((width * height) / 16000, 16, 80));
-    nodes = nodes.filter((node) => node.x <= width + 20 && node.y <= height + 20).slice(0, wanted);
-    while (nodes.length < wanted) nodes.push(makeNode());
-    pulses = [];
-  }
-
-  function makeNode() {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 5 + Math.random() * 9; // pixels per second
-    return {
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      radius: 1 + Math.random() * 1.6,
-      // About one node in six glows in one of the accent colours.
-      accent: Math.random() < 0.17 ? Math.floor(Math.random() * 4) : -1,
-      ox: 0,
-      oy: 0,
-    };
+    lastDrawn = 0;
   }
 
   function tick(time) {
     frame = requestAnimationFrame(tick);
-    if (time - lastDrawn < frameInterval - 1) return;
-    const dt = lastTime ? Math.min(time - lastTime, 100) / 1000 : 0;
-    lastTime = time;
+    if (lastDrawn && time - lastDrawn < FRAME_INTERVAL - 1) return;
+    // Capped, so coming back to the tab carries on rather than jumping ahead.
+    if (lastDrawn) elapsed += Math.min(time - lastDrawn, 100) / 1000;
     lastDrawn = time;
-    step(dt, time);
-    draw(time);
+    draw();
   }
 
-  function drawStill() {
-    draw(12000);
+  function draw() {
+    gl.uniform1f(uniforms.time, animating() ? elapsed : STILL_TIME);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  function step(dt, time) {
-    const margin = 20;
-    const reach = 150;
+  // The blog's latest posts. The last ones seen show straight away, then the
+  // list only changes if the feed says something's new. The browser's own cache
+  // stops it asking the blog more than once every 15 minutes.
+  function setUpPosts() {
+    const FEED_URL = "https://saltedlolly.com/feed/";
+    const BLOG_ORIGIN = "https://saltedlolly.com";
+    const STORAGE_KEY = "olly.st:latest-posts";
+    const POST_COUNT = 3;
+    const IMAGE_WIDTH = 640; // Twice the widest it's shown, for sharp screens.
 
-    for (const node of nodes) {
-      node.x += node.vx * dt;
-      node.y += node.vy * dt;
-      if (node.x < -margin) node.x = width + margin;
-      else if (node.x > width + margin) node.x = -margin;
-      if (node.y < -margin) node.y = height + margin;
-      else if (node.y > height + margin) node.y = -margin;
+    const list = document.querySelector(".posts");
+    if (!list) return;
 
-      // Nodes near the mouse lean gently away from it, then drift back.
-      let tx = 0;
-      let ty = 0;
-      if (pointer) {
-        const dx = node.x - pointer.x;
-        const dy = node.y - pointer.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance < reach && distance > 0.1) {
-          const push = (1 - distance / reach) * 28;
-          tx = (dx / distance) * push;
-          ty = (dy / distance) * push;
-        }
-      }
-      node.ox += (tx - node.ox) * 0.08;
-      node.oy += (ty - node.oy) * 0.08;
+    let shown = readSaved();
+    if (shown) {
+      render(JSON.parse(shown));
+    } else {
+      showPlaceholders();
     }
+    list.hidden = false;
 
-    if (time >= nextPulseAt && pulses.length < 6) {
-      spawnPulse(time);
-      nextPulseAt = time + 700 + Math.random() * 1100;
-    }
-    pulses = pulses.filter((pulse) => time - pulse.born < pulse.duration);
-  }
+    fetch(FEED_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Feed answered ${response.status}`);
+        return response.text();
+      })
+      .then((text) => {
+        const posts = parseFeed(text);
+        const latest = JSON.stringify(posts);
+        if (latest === shown) return;
+        shown = latest;
+        render(posts);
+        save(latest);
+      })
+      .catch(() => {
+        // Keep any saved posts. With none, the panel is just its link to the blog.
+        if (!shown) list.hidden = true;
+      });
 
-  // A pulse runs from a random node to its nearest neighbour.
-  function spawnPulse(time) {
-    const from = nodes[Math.floor(Math.random() * nodes.length)];
-    let to = null;
-    let best = linkDistance;
-    for (const node of nodes) {
-      if (node === from) continue;
-      const distance = Math.hypot(node.x - from.x, node.y - from.y);
-      if (distance < best) {
-        best = distance;
-        to = node;
-      }
-    }
-    if (to) pulses.push({ from, to, born: time, duration: 1200 + best * 6, colour: Math.floor(Math.random() * 4) });
-  }
-
-  function draw(time) {
-    ctx.clearRect(0, 0, width, height);
-    drawAurora(time);
-    drawMesh(time);
-  }
-
-  function drawAurora(time) {
-    const w = aurora.width;
-    const h = aurora.height;
-    const size = Math.max(w, h);
-    actx.clearRect(0, 0, w, h);
-    actx.globalCompositeOperation = colours.blend;
-
-    blobs.forEach((blob, index) => {
-      const x = (blob.x + Math.sin(time * blob.sx + blob.phase) * 0.12) * w;
-      const y = (blob.y + Math.cos(time * blob.sy + blob.phase) * 0.1) * h;
-      const radius = blob.r * size * (1 + Math.sin(time * 0.00011 + blob.phase) * 0.08);
-      const rgb = colours.aurora[index % colours.aurora.length];
-      const glow = actx.createRadialGradient(x, y, 0, x, y, radius);
-      glow.addColorStop(0, `rgba(${rgb}, ${colours.auroraAlpha})`);
-      glow.addColorStop(0.55, `rgba(${rgb}, ${colours.auroraAlpha * 0.35})`);
-      glow.addColorStop(1, `rgba(${rgb}, 0)`);
-      actx.fillStyle = glow;
-      actx.fillRect(0, 0, w, h);
-    });
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(aurora, 0, 0, width, height);
-  }
-
-  function drawMesh(time) {
-    const count = nodes.length;
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i < count; i++) {
-      const a = nodes[i];
-      const ax = a.x + a.ox;
-      const ay = a.y + a.oy;
-      for (let j = i + 1; j < count; j++) {
-        const b = nodes[j];
-        const dx = b.x + b.ox - ax;
-        const dy = b.y + b.oy - ay;
-        if (Math.abs(dx) > linkDistance || Math.abs(dy) > linkDistance) continue;
-        const distance = Math.hypot(dx, dy);
-        if (distance >= linkDistance) continue;
-        const alpha = (1 - distance / linkDistance) * colours.linkAlpha;
-        ctx.strokeStyle = `rgba(${colours.link}, ${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(ax + dx, ay + dy);
-        ctx.stroke();
+    function readSaved() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved && Array.isArray(JSON.parse(saved)) ? saved : null;
+      } catch {
+        return null;
       }
     }
 
-    if (pointer) {
-      for (const node of nodes) {
-        const dx = node.x + node.ox - pointer.x;
-        const dy = node.y + node.oy - pointer.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance >= linkDistance * 1.2) continue;
-        ctx.strokeStyle = `rgba(${colours.aurora[2]}, ${((1 - distance / (linkDistance * 1.2)) * 0.35).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.moveTo(pointer.x, pointer.y);
-        ctx.lineTo(pointer.x + dx, pointer.y + dy);
-        ctx.stroke();
+    function save(value) {
+      try {
+        localStorage.setItem(STORAGE_KEY, value);
+      } catch {
+        // Private windows can refuse. The posts just load fresh next time.
       }
     }
 
-    for (const node of nodes) {
-      const colour = node.accent >= 0 ? colours.aurora[node.accent] : colours.node;
-      ctx.fillStyle = `rgba(${colour}, ${node.accent >= 0 ? 0.9 : 0.55})`;
-      ctx.beginPath();
-      ctx.arc(node.x + node.ox, node.y + node.oy, node.accent >= 0 ? node.radius + 0.6 : node.radius, 0, Math.PI * 2);
-      ctx.fill();
+    function parseFeed(text) {
+      const feed = new DOMParser().parseFromString(text, "application/xml");
+      if (feed.querySelector("parsererror")) throw new Error("Feed isn't valid XML");
+
+      const posts = [];
+      for (const item of feed.querySelectorAll("channel > item")) {
+        const read = (name) => item.getElementsByTagName(name)[0]?.textContent.trim() || "";
+        const link = safeUrl(read("link"));
+        const title = read("title");
+        if (!title || link?.origin !== BLOG_ORIGIN) continue;
+        posts.push({
+          link: link.href,
+          title,
+          preview: read("description"),
+          image: heroImage(read("content:encoded")),
+        });
+        if (posts.length === POST_COUNT) break;
+      }
+      if (!posts.length) throw new Error("No posts in the feed");
+      return posts;
     }
 
-    for (const pulse of pulses) {
-      const progress = (time - pulse.born) / pulse.duration;
-      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-      const x = lerp(pulse.from.x + pulse.from.ox, pulse.to.x + pulse.to.ox, eased);
-      const y = lerp(pulse.from.y + pulse.from.oy, pulse.to.y + pulse.to.oy, eased);
-      const fade = Math.sin(progress * Math.PI);
-      const rgb = colours.aurora[pulse.colour];
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, 9);
-      glow.addColorStop(0, `rgba(${rgb}, ${(0.9 * fade).toFixed(3)})`);
-      glow.addColorStop(1, `rgba(${rgb}, 0)`);
-      ctx.fillStyle = glow;
-      ctx.fillRect(x - 9, y - 9, 18, 18);
+    // The picture a post opens with. Parsed without loading anything, and asked
+    // for at a smaller size when it comes from the blog's image service.
+    function heroImage(content) {
+      const page = new DOMParser().parseFromString(content, "text/html");
+      const image = page.querySelector("body > p:first-child > img:first-child");
+      const url = image && safeUrl(image.getAttribute("src"));
+      if (!url || url.origin !== BLOG_ORIGIN) return null;
+
+      const width = Number(url.searchParams.get("w"));
+      const height = Number(url.searchParams.get("h"));
+      if (url.pathname !== "/_image" || !width || !height) return url.href;
+      url.searchParams.set("w", IMAGE_WIDTH);
+      url.searchParams.set("h", Math.round((IMAGE_WIDTH * height) / width));
+      url.searchParams.set("f", "webp");
+      return url.href;
     }
-  }
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
+    function safeUrl(value) {
+      try {
+        return new URL(value);
+      } catch {
+        return null;
+      }
+    }
 
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
+    function render(posts) {
+      list.removeAttribute("aria-hidden");
+      list.replaceChildren(
+        ...posts.map((post) => {
+          const link = element("a", "post");
+          link.href = post.link;
+          if (post.image) {
+            const image = element("img", "post__image");
+            image.src = post.image;
+            image.alt = ""; // The title beside it already names the link.
+            image.width = IMAGE_WIDTH;
+            image.height = 400;
+            image.decoding = "async";
+            link.append(image);
+          }
+          const body = element("span", "post__body");
+          body.append(element("span", "post__title", post.title), element("span", "post__preview", post.preview));
+          link.append(body);
+          const item = element("li");
+          item.append(link);
+          return item;
+        }),
+      );
+    }
+
+    function showPlaceholders() {
+      list.setAttribute("aria-hidden", "true");
+      list.replaceChildren(
+        ...Array.from({ length: POST_COUNT }, () => {
+          const post = element("div", "post post--loading");
+          post.append(element("div", "post__image"), element("div", "post__body"));
+          const item = element("li");
+          item.append(post);
+          return item;
+        }),
+      );
+    }
+
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text) node.textContent = text;
+      return node;
+    }
   }
 
   function setUpCopyButton() {

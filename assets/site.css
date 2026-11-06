@@ -6,7 +6,7 @@
   --bg: #050816;
   --text: #f7f3ec;
   --muted: #a9b2c8;
-  --faint: #8590ad;
+  --faint: #a2abc3;
   --panel: rgba(12, 18, 40, 0.72);
   --panel-hover: rgba(18, 26, 54, 0.86);
   --border: rgba(160, 175, 220, 0.16);
@@ -21,13 +21,10 @@
     radial-gradient(55% 45% at 85% 30%, rgba(79, 169, 255, 0.16), transparent 70%),
     radial-gradient(50% 40% at 50% 100%, rgba(179, 92, 255, 0.14), transparent 70%);
 
-  /* Read by site.js for the background animation: "r, g, b" triplets. */
-  --mesh-node: 247, 243, 236;
-  --mesh-link: 160, 175, 220;
-  --mesh-aurora: 255, 95, 155 | 179, 92, 255 | 79, 169, 255 | 255, 123, 115;
-  --mesh-aurora-alpha: 0.2;
-  --mesh-link-alpha: 0.22;
-  --mesh-blend: lighter;
+  /* Read by site.js for the background animation: "r, g, b" triplets. Text sits
+     directly on these, so keep them dark enough to pass contrast at full strength. */
+  --field-base: 5, 8, 22;
+  --field-hues: 92, 18, 72 | 58, 26, 128 | 16, 58, 122 | 104, 30, 44;
 }
 
 @media (prefers-color-scheme: light) {
@@ -36,7 +33,7 @@
     --bg: #e9edf5;
     --text: #141a30;
     --muted: #424b6a;
-    --faint: #555e7c;
+    --faint: #4c5573;
     --panel: rgba(255, 255, 255, 0.74);
     --panel-hover: rgba(255, 255, 255, 0.92);
     --border: rgba(30, 40, 80, 0.12);
@@ -52,12 +49,8 @@
       radial-gradient(55% 45% at 85% 30%, rgba(79, 169, 255, 0.16), transparent 70%),
       radial-gradient(50% 40% at 50% 100%, rgba(179, 92, 255, 0.12), transparent 70%);
 
-    --mesh-node: 40, 50, 95;
-    --mesh-link: 50, 62, 110;
-    --mesh-aurora: 255, 120, 170 | 180, 130, 255 | 110, 180, 255 | 255, 160, 140;
-    --mesh-aurora-alpha: 0.28;
-    --mesh-link-alpha: 0.2;
-    --mesh-blend: source-over;
+    --field-base: 233, 237, 245;
+    --field-hues: 255, 196, 218 | 218, 202, 255 | 184, 222, 255 | 255, 212, 194;
   }
 }
 
@@ -84,18 +77,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Once the animation is running it paints the glow itself. */
-.has-mesh body {
+/* Once the animation is running it paints the colour itself. */
+.has-field body {
   background: var(--bg);
 }
 
-.mesh {
+.field {
+  display: none;
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 0;
   pointer-events: none;
+}
+
+.has-field .field {
+  display: block;
 }
 
 .page {
@@ -197,13 +195,13 @@ a {
   transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
 }
 
-.card:hover {
+a.card:hover {
   border-color: var(--border-hover);
   background: var(--panel-hover);
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .card:hover {
+  a.card:hover {
     transform: translateY(-2px);
   }
 }
@@ -214,10 +212,33 @@ ul {
   list-style: none;
 }
 
-/* The blog: the main link, so it's the biggest card. */
+/* Round icons, one per panel. */
+
+.icon {
+  flex: none;
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.icon--large {
+  width: 64px;
+  height: 64px;
+}
+
+/* For a logo with no background of its own. */
+.icon--disc {
+  padding: 3px;
+  background: #fff;
+}
+
+/* The blog: the main panel, with its latest posts. */
 
 .blog {
   position: relative;
+  gap: 24px;
   padding: 28px 30px;
   overflow: hidden;
 }
@@ -231,10 +252,26 @@ ul {
 }
 
 .blog .eyebrow {
+  margin-bottom: 6px;
   color: var(--accent);
 }
 
+.blog__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.blog__intro {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
 .blog__title {
+  display: block;
   font-size: clamp(1.75rem, 6vw, 2.5rem);
   font-weight: 750;
   line-height: 1.1;
@@ -242,6 +279,7 @@ ul {
 }
 
 .blog__text {
+  display: block;
   margin-top: 8px;
   color: var(--muted);
   font-size: 1.0625rem;
@@ -249,13 +287,107 @@ ul {
 }
 
 .blog__go {
-  margin-top: 18px;
   color: var(--accent);
   font-weight: 650;
 }
 
-.blog:hover .blog__go {
+.blog__link:hover .blog__go {
   color: var(--accent-2);
+}
+
+.posts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.posts[hidden] {
+  display: none;
+}
+
+.post {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.post:hover {
+  border-color: var(--border-hover);
+  background: var(--panel-hover);
+}
+
+.post__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--border);
+}
+
+.post__body {
+  display: block;
+  padding: 14px 16px 16px;
+}
+
+/* Holds the space until the first posts arrive. */
+.post--loading .post__body {
+  min-height: 9em;
+}
+
+.post__title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.post__preview {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+@media (max-width: 720px) {
+  .posts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Picture beside the words, so three posts don't fill the whole phone. */
+  .post {
+    flex-direction: row;
+  }
+
+  .post__image {
+    flex: none;
+    width: 34%;
+    height: auto;
+    aspect-ratio: auto;
+    min-height: 100%;
+  }
+
+  .post__body {
+    min-width: 0;
+    padding: 12px 14px;
+  }
+
+  .post__preview {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
 }
 
 /* Projects */
@@ -264,6 +396,12 @@ ul {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
+}
+
+.project__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .project__name {
@@ -396,6 +534,7 @@ ul {
 
 @media (prefers-reduced-motion: reduce) {
   .card,
+  .post,
   .pill,
   .copy {
     transition: none;
