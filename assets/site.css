@@ -33,7 +33,7 @@
     --bg: #e9edf5;
     --text: #141a30;
     --muted: #424b6a;
-    --faint: #4c5573;
+    --faint: #434c69;
     --panel: rgba(255, 255, 255, 0.74);
     --panel-hover: rgba(255, 255, 255, 0.92);
     --border: rgba(30, 40, 80, 0.12);
@@ -43,14 +43,14 @@
     --focus: #1a5fb8;
     --shadow: 0 16px 40px rgba(20, 28, 60, 0.1);
     /* Deepened so the wordmark keeps its contrast on a pale page. */
-    --gradient: linear-gradient(115deg, #c8413a, #b0285f 40%, #7b3fd6 72%, #1a5fb8);
+    --gradient: linear-gradient(115deg, #b83530, #b0285f 40%, #7b3fd6 72%, #1a5fb8);
     --fallback-bg:
       radial-gradient(60% 50% at 15% 10%, rgba(255, 95, 155, 0.14), transparent 70%),
       radial-gradient(55% 45% at 85% 30%, rgba(79, 169, 255, 0.16), transparent 70%),
       radial-gradient(50% 40% at 50% 100%, rgba(179, 92, 255, 0.12), transparent 70%);
 
     --field-base: 233, 237, 245;
-    --field-hues: 255, 196, 218 | 218, 202, 255 | 184, 222, 255 | 255, 212, 194;
+    --field-hues: 255, 176, 206 | 206, 184, 255 | 158, 208, 255 | 255, 192, 164;
   }
 }
 
@@ -137,6 +137,33 @@ a {
   margin-bottom: 48px;
 }
 
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 3vw, 24px);
+}
+
+.avatar {
+  flex: none;
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--border);
+  transition: box-shadow 0.2s;
+}
+
+.avatar:hover {
+  box-shadow: 0 0 0 3px var(--border-hover);
+}
+
+.avatar img {
+  display: block;
+  width: clamp(64px, 14vw, 112px);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .wordmark {
   margin: 0;
   font-size: clamp(3.5rem, 15vw, 7.5rem);
@@ -221,6 +248,8 @@ ul {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
+  /* Keeps the circle's edge visible when an icon is the same colour as its panel. */
+  box-shadow: 0 0 0 1px var(--border);
 }
 
 .icon--large {
@@ -257,17 +286,12 @@ ul {
 }
 
 .blog__link {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px 18px;
   border-radius: 12px;
   text-decoration: none;
-}
-
-.blog__intro {
-  flex: 1 1 280px;
-  min-width: 0;
 }
 
 .blog__title {
@@ -287,6 +311,7 @@ ul {
 }
 
 .blog__go {
+  align-self: center;
   color: var(--accent);
   font-weight: 650;
 }
@@ -362,6 +387,14 @@ ul {
 }
 
 @media (max-width: 720px) {
+  .blog__link {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .blog__go {
+    grid-column: 2;
+  }
+
   .posts {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -394,14 +427,23 @@ ul {
 
 .projects {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.project__head {
+/* Same layout as the blog panel: the icon, then all the words in one column. */
+.project {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.project__body {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  flex-grow: 1;
+  align-self: stretch;
+  min-width: 0;
 }
 
 .project__name {
@@ -419,6 +461,7 @@ ul {
 
 .project__host {
   margin-top: 14px;
+  overflow-wrap: anywhere;
   color: var(--accent);
   font-size: 0.875rem;
   font-weight: 600;
@@ -527,12 +570,22 @@ ul {
     padding: 24px 22px;
   }
 
+  .projects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icon--large {
+    width: 48px;
+    height: 48px;
+  }
+
   .card {
     border-radius: 18px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .avatar,
   .card,
   .post,
   .pill,

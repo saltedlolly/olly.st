@@ -4,7 +4,7 @@ Olly Stedall's identity page at [olly.st](https://olly.st): the domain behind th
 
 A single static page served by GitHub Pages:
 
-- `index.html`, `assets/site.css`, `assets/site.js`: the page, its styles, and the background animation (respects reduced motion), the blog panel's latest posts (read live from the saltedlolly.com feed and saved in the browser) and the Nostr key's Copy button.
+- `index.html`, `assets/site.css`, `assets/site.js`: the page, its styles, and the background animation (respects reduced motion), the current Bluesky avatar, the blog panel's latest posts (read live from the saltedlolly.com feed and saved in the browser) and the Nostr key's Copy button.
 - `.well-known/nostr.json`: Nostr (NIP-05) verification. `_config.yml` tells Jekyll to publish it.
 - The Bluesky handle is verified by a DNS TXT record (`_atproto.olly.st`), not by this site.
 

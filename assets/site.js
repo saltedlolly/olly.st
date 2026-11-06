@@ -1,15 +1,16 @@
-// olly.st's only script: the Nostr key's Copy button, the blog panel's latest
-// posts, and the background animation (areas of colour that slowly morph, drift
+// olly.st's only script: the Nostr key's Copy button, the current Bluesky avatar,
+// the blog panel's latest posts, and the background animation (areas of colour that slowly morph, drift
 // between hues and pulse). The page works without it: the blog panel still links
 // to the blog, and site.css has a static gradient as the background's fallback.
 //
 // Kept light on purpose: one small WebGL shader with no libraries, drawn at half
 // size or less and scaled up (it's all soft edges anyway), 30fps, paused while
 // the tab is hidden, and a single still frame when the visitor prefers reduced
-// motion or has Data Saver on. Slow devices without a real GPU get the fallback.
+// motion or has Data Saver on.
 
 (() => {
   setUpCopyButton();
+  setUpAvatar();
   setUpPosts();
 
   const canvas = document.querySelector(".field");
@@ -21,7 +22,6 @@
       depth: false,
       stencil: false,
       powerPreference: "low-power",
-      failIfMajorPerformanceCaveat: true,
     });
   if (!gl) return;
 
@@ -58,21 +58,21 @@
       float t = u_time;
       vec2 p = gl_FragCoord.xy / min(u_resolution.x, u_resolution.y) * 1.5;
 
-      p += 0.60 * vec2(sin(p.y * 1.3 + t * 0.17), cos(p.x * 1.1 - t * 0.14 + 1.7));
-      p += 0.45 * vec2(sin(p.y * 2.1 - t * 0.21 + 4.1), cos(p.x * 1.9 + t * 0.16 + 2.3));
-      p += 0.30 * vec2(sin(p.y * 3.1 + t * 0.12 + 0.6), cos(p.x * 2.7 - t * 0.19 + 5.2));
+      p += 0.60 * vec2(sin(p.y * 1.3 + t * 0.42), cos(p.x * 1.1 - t * 0.35 + 1.7));
+      p += 0.45 * vec2(sin(p.y * 2.1 - t * 0.52 + 4.1), cos(p.x * 1.9 + t * 0.40 + 2.3));
+      p += 0.30 * vec2(sin(p.y * 3.1 + t * 0.30 + 0.6), cos(p.x * 2.7 - t * 0.48 + 5.2));
 
       // Which hue each area of the page is showing.
-      float across = smoothstep(0.15, 0.85, wave(p.x * 1.4 + p.y * 0.4 + t * 0.09));
-      float down = smoothstep(0.15, 0.85, wave(p.y * 1.2 - p.x * 0.5 - t * 0.07 + 2.0));
+      float across = smoothstep(0.15, 0.85, wave(p.x * 1.4 + p.y * 0.4 + t * 0.22));
+      float down = smoothstep(0.15, 0.85, wave(p.y * 1.2 - p.x * 0.5 - t * 0.18 + 2.0));
       vec3 hue = mix(mix(u_hues[0], u_hues[1], across), mix(u_hues[2], u_hues[3], across), down);
 
       // How strongly it shows: pools of colour, a wave of light rolling through
-      // them about every 10 seconds, and a slower breath across the whole page.
-      float pools = smoothstep(0.1, 0.9, wave(p.x * 1.1 + p.y * 1.3 + t * 0.11));
-      float pulse = wave(p.x * 0.9 - p.y * 0.7 + t * 0.63);
-      float breath = wave(t * 0.29);
-      float strength = pools * (0.5 + 0.35 * pulse + 0.15 * breath);
+      // them about every 7 seconds, and a slower breath across the whole page.
+      float pools = 0.3 + 0.7 * smoothstep(0.1, 0.9, wave(p.x * 1.1 + p.y * 1.3 + t * 0.28));
+      float pulse = wave(p.x * 0.9 - p.y * 0.7 + t * 0.9);
+      float breath = wave(t * 0.5);
+      float strength = pools * (0.35 + 0.45 * pulse + 0.2 * breath);
 
       // A fraction of a shade of noise, to stop dark gradients showing bands.
       float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
@@ -216,6 +216,31 @@
   function draw() {
     gl.uniform1f(uniforms.time, animating() ? elapsed : STILL_TIME);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // The page has a copy of the avatar, so this only swaps it if the one on
+  // Bluesky has changed since. If Bluesky can't be reached, the copy stays.
+  function setUpAvatar() {
+    const PROFILE_URL = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=olly.st";
+    const image = document.querySelector(".avatar img");
+    if (!image) return;
+
+    fetch(PROFILE_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Bluesky answered ${response.status}`);
+        return response.json();
+      })
+      .then(({ avatar }) => {
+        if (!avatar || avatar === image.dataset.source) return;
+        if (!avatar.startsWith("https://cdn.bsky.app/")) return;
+        // Loaded first, so the old picture stays until the new one is ready.
+        const latest = new Image();
+        latest.onload = () => {
+          image.src = avatar;
+        };
+        latest.src = avatar;
+      })
+      .catch(() => {});
   }
 
   // The blog's latest posts. The last ones seen show straight away, then the

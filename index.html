@@ -27,7 +27,13 @@
 
   <div class="page h-card">
     <header class="hero">
-      <h1 class="wordmark"><a class="u-url u-uid" href="https://olly.st/">olly.st</a></h1>
+      <div class="masthead">
+        <a class="avatar" href="https://bsky.app/profile/olly.st" rel="me">
+          <!-- A copy of the avatar at data-source. site.js swaps it if the live one has changed. -->
+          <img class="u-photo" src="/assets/icons/avatar.jpg" data-source="https://cdn.bsky.app/img/avatar/plain/did:plc:z4ov3fceaglufr3pqj6wlmb2/bafkreifnzuz45d4knzwwuxxixlzx7bhc6fst6tvaozddzfvoh353pjk75e" alt="Olly Stedall on Bluesky" width="112" height="112">
+        </a>
+        <h1 class="wordmark"><a class="u-url u-uid" href="https://olly.st/">olly.st</a></h1>
+      </div>
       <p class="name p-name">Olly Stedall</p>
       <p class="tagline p-note">Open-source tools for home servers, pixel displays and DigiByte.</p>
     </header>
@@ -53,32 +59,42 @@
         <ul class="projects">
           <li>
             <a class="card project" href="https://diginode.tools/">
-              <span class="project__head">
-                <img class="icon" src="/assets/icons/diginode.png" alt="" width="48" height="48">
+              <img class="icon" src="/assets/icons/diginode.png" alt="" width="48" height="48">
+              <span class="project__body">
                 <span class="project__name">DigiNode Tools</span>
+                <span class="project__text">Set up, monitor and manage a DigiByte node on a Raspberry Pi, Linux PC or VPS.</span>
+                <span class="project__host">diginode.tools</span>
               </span>
-              <span class="project__text">Set up, monitor and manage a DigiByte node on a Raspberry Pi, Linux PC or VPS.</span>
-              <span class="project__host">diginode.tools</span>
             </a>
           </li>
           <li>
-            <a class="card project" href="https://github.com/saltedlolly">
-              <span class="project__head">
-                <img class="icon" src="/assets/icons/apps.svg" alt="" width="48" height="48">
-                <span class="project__name">Umbrel &amp; Tronbyt apps</span>
+            <a class="card project" href="https://apps.tronbyt.com/authors/saltedlolly">
+              <img class="icon" src="/assets/icons/tronbyt.png" alt="" width="48" height="48">
+              <span class="project__body">
+                <span class="project__name">Tronbyt apps</span>
+                <span class="project__text">Apps I&rsquo;ve made for Tronbyt pixel displays.</span>
+                <span class="project__host">apps.tronbyt.com</span>
               </span>
-              <span class="project__text">Open-source apps for Umbrel home servers and Tronbyt pixel displays.</span>
-              <span class="project__host">github.com/saltedlolly</span>
+            </a>
+          </li>
+          <li>
+            <a class="card project" href="https://github.com/saltedlolly/umbrel-app-store">
+              <img class="icon" src="/assets/icons/umbrel.png" alt="" width="48" height="48">
+              <span class="project__body">
+                <span class="project__name">Umbrel Community App Store</span>
+                <span class="project__text">My community app store for Umbrel home servers.</span>
+                <span class="project__host">github.com/saltedlolly/umbrel-app-store</span>
+              </span>
             </a>
           </li>
           <li>
             <a class="card project" href="https://brock-cornwall.co.uk/">
-              <span class="project__head">
-                <img class="icon icon--disc" src="/assets/icons/brock.png" alt="" width="48" height="48">
+              <img class="icon icon--disc" src="/assets/icons/brock.png" alt="" width="48" height="48">
+              <span class="project__body">
                 <span class="project__name">Brock</span>
+                <span class="project__text">A holiday house in Trebetherick, Cornwall, available to rent all year round.</span>
+                <span class="project__host">brock-cornwall.co.uk</span>
               </span>
-              <span class="project__text">A holiday house in Trebetherick, Cornwall, available to rent all year round.</span>
-              <span class="project__host">brock-cornwall.co.uk</span>
             </a>
           </li>
         </ul>
