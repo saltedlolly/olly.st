@@ -85,9 +85,13 @@ body {
 .field {
   display: none;
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
+  /* The large viewport, so the field carries on behind iOS Safari's
+     see-through toolbar instead of stopping where it starts. */
+  height: 100vh;
+  height: 100lvh;
   z-index: 0;
   pointer-events: none;
 }
@@ -99,9 +103,9 @@ body {
 .page {
   position: relative;
   z-index: 1;
-  width: min(960px, 100% - 32px);
+  width: min(960px, 100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   margin-inline: auto;
-  padding-block: clamp(48px, 10vh, 112px) 32px;
+  padding-block: clamp(48px, 10vh, 112px) calc(32px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -174,7 +178,11 @@ a {
 
 .wordmark a {
   display: inline-block;
-  padding-bottom: 0.08em;
+  /* The gradient is clipped to this box, so it needs room for the y's tail,
+     which hangs lower in some fallback fonts (Segoe UI on Windows). The
+     negative margin keeps the spacing below the title as it was. */
+  padding-bottom: 0.25em;
+  margin-bottom: -0.17em;
   background: var(--gradient);
   -webkit-background-clip: text;
   background-clip: text;
