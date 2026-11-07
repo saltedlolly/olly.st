@@ -207,7 +207,10 @@ a {
 
 .tagline {
   margin: 6px 0 0;
-  max-width: 34em;
+  /* Room for the whole tagline on one line on a laptop; where it does wrap
+     (phones), balance keeps the two lines even rather than leaving one word. */
+  max-width: 48em;
+  text-wrap: balance;
   color: var(--muted);
   font-size: clamp(1rem, 2.6vw, 1.125rem);
 }
