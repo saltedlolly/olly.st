@@ -77,13 +77,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Once the animation is running it paints the colour itself. */
-.has-field body {
-  background: var(--bg);
-}
-
+/* The canvas is always laid out and just transparent until the animation is
+   ready, then fades in over the fallback gradient. Switching it from
+   display: none instead left Safari sometimes never showing it on a first,
+   uncached visit, even though it was drawing. */
 .field {
-  display: none;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
   position: fixed;
   top: 0;
   left: 0;
@@ -97,7 +98,13 @@ body {
 }
 
 .has-field .field {
-  display: block;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+  }
 }
 
 .page {
